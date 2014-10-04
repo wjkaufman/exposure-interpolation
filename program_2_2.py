@@ -144,11 +144,16 @@ class InterpolationController:
     def interpolateData(self):
         self.XMPList.writeData(self.writePath)
 
-
+###Whatever###
 
 print("\nProgram is starting...\n")
 
-controller = InterpolationController("./source/DSC_0001.xmp", "./source/DSC_0010.xmp", "./output/")
+firstFile = "./source/DSC_0378.xmp"
+lastFile  = "./source/DSC_0583.xmp"
+writePath = "./output/"
+
+
+controller = InterpolationController(firstFile, lastFile, writePath)
 print("controller is initialized\n")
 controller.interpolateData()
 print("data interpolated\n")
