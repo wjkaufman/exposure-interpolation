@@ -7,7 +7,7 @@ def intToDigit(integer, digit_number = 4): #this function takes an integer and r
 #MyXMP is for individual xmp files
 class MyXMP: 
     
-    def __init__(self, number = 0, exposure = 0, temp = 6000, tint = 8):
+    def __init__(self, number = 0, exposure = 0, temp = 6000, tint = 0):
         self.name = "DSC_" + intToDigit(number) + ".xmp"
         self.exposure = exposure
         self.temp = temp
@@ -30,38 +30,43 @@ class MyXMP:
     
     
     
-    def setName(self, number): #setName changes the name according to the number inputed
-        self.name = "DSC_" + intToDigit(number) + ".xmp"
     
-    
+    def setAttribute(self, attributeName, newData): #attributeName would be "crs:Exposure2012=\"" for exposure
+        startData = newData.find(attributeName) + len(attributeName)
+        endData = newData.find("\"\n", startData)
+        if (attributeName.find("Exposure") >= 0):
+            self.exposure = float(newData[startData:endData])
+        elif (attributeName.find("Temperature") >= 0):
+            self.temp = float(newData[startData:endData])
+        elif (attributeName.find("Tint") >= 0):
+            self.tint = float(newData[startData:endData])
+        elif (attributeName.find("RawFileName") >= 0):
+            self.name = newData[startData:endData-4] + ".xmp"
     
     def setExposure(self, newData): #setExposure takes in new xmp exposure data as a string and reassigns the data
-        startData = newData.find("crs:Exposure2012=\"") + 18
-        endData = newData.find("\"\n", startData)
-        self.exposure = float(newData[startData:endData])
+        self.setAttribute("crs:Exposure2012=\"", newData)
     
     def setTemp(self, newData): #setExposure takes in new xmp exposure data as a string and reassigns the data
-        startData = newData.find("crs:Temperature=\"") + 17
-        endData = newData.find("\"\n", startData)
-        self.temp = float(newData[startData:endData])
+        self.setAttribute("crs:Temperature=\"", newData)
     
     def setTint(self, newData): #setExposure takes in new xmp exposure data as a string and reassigns the data
-        startData = newData.find("crs:Tint=\"") + 10
-        endData = newData.find("\"\n", startData)
-        self.tint = float(newData[startData:endData])
-    
+        self.setAttribute("crs:Tint=\"", newData)
+        
+    def setName(self, newData):
+        self.setAttribute("crs:RawFileName=\"", newData)
+        
     def setData(self, newData): #setData takes in new xmp data as a string and reassigns the data
         self.setExposure(newData)
         self.setTemp(newData)
         self.setTint(newData)
-    
+        self.setName(newData)
+        
     
     
     def writeXMP(self, template): #writeXMP returns a string that can be written to a .xmp file
         data = template
         startExposureData = data.find("crs:Exposure2012=\"") + 18
         endExposureData = data.find("\"\n", startExposureData)
-        print(self.exposure)
         data = data[:startExposureData] + str(self.exposure) + data[endExposureData:]
         
         startTempData = data.find("crs:Temperature=\"") + 17
@@ -72,32 +77,80 @@ class MyXMP:
         endTintData = data.find("\"\n", startTintData)
         data = data[:startTintData] + str(self.tint) + data[endTintData:]
         
+        startNameData = data.find("crs:RawFileName=\"") + 17
+        endNameData = data.find("\"\n", startNameData)
+        data = data[:startNameData] + str(self.name) + data[endNameData:]
+        
         return data
     
     
 #MyXMPList is for lists or groups of xmp files
 class MyXMPList:
     
-    def __init__(self, firstXMP, lastXMP):
+    def __init__(self, templatePath, firstXMP = MyXMP(), lastXMP = MyXMP()):
         self.firstXMP = firstXMP #first and last XMP will be MyXMP objects
         self.lastXMP = lastXMP
+        f = open(templatePath, 'r')
+        self.templateData = f.read()
+        f.close()
+    
+    def __repr__(self):
+        return str(self.firstXMP) + ":\t" + str(self.lastXMP)
+    
+    def getNumber(self):
+        return (self.lastXMP.getNumber() - self.firstXMP.getNumber())
+    
+    def setData(self, filePath1, filePath2):
+        f1 = open(filePath1, 'r')
+        f2 = open(filePath2, 'r')
+        data1 = f1.read()
+        data2 = f2.read()
+        f1.close()
+        f2.close()
         
-    def length(self):
-        return (self.lastXMP.getNumber - self.firstXMP.getNumber)
+        self.firstXMP.setData(data1)
+        self.lastXMP.setData(data2)
+        
+    def writeData(self, writePath): #writes a list of XMP's to the writePath (e.g. "./source/") that transition from firstXMP to lastXMP
+        changeExposure = (self.lastXMP.exposure - self.firstXMP.exposure)/float(self.getNumber())
+        print("changeExposure:\t", changeExposure)
+        changeTemp = (self.lastXMP.temp - self.firstXMP.temp)/float(self.getNumber())
+        print("changeTemp:\t", changeTemp)
+        changeTint = (self.lastXMP.tint - self.firstXMP.tint)/float(self.getNumber())
+        print("changeTint:\t", changeTint)
+        
+        print("firstXMP.exposure:\t", self.firstXMP.exposure)
+        
+        for i in range(self.getNumber()+1):
+            newXMP = MyXMP(i+self.firstXMP.getNumber(), \
+                           self.firstXMP.exposure + changeExposure*i, \
+                           self.firstXMP.temp + changeTemp*i, \
+                           self.firstXMP.tint + changeTint*i)
+            
+            data = newXMP.writeXMP(self.templateData)
+            
+            f = open(writePath + newXMP.name, 'w')
+            f.write(data)
+            f.close()
+    
+
+class InterpolationController:
+    
+    def __init__(self, file1Path, file2Path, writePath):
+        self.XMPList = MyXMPList(file1Path) # I have no idea if this will work
+        self.XMPList.setData(file1Path, file2Path)
+        self.writePath = writePath
+        
+    def interpolateData(self):
+        self.XMPList.writeData(self.writePath)
 
 
 
+print("\nProgram is starting...\n")
 
+controller = InterpolationController("./source/DSC_0001.xmp", "./source/DSC_0010.xmp", "./output/")
+print("controller is initialized\n")
+controller.interpolateData()
+print("data interpolated\n")
 
-templateXMP = "./source/DSC_0830.xmp"
-f = open(templateXMP, 'r')
-template = f.read()
-f.close()
-
-x = MyXMP(102,.25,60000,10)
-print(x)
-newData = x.writeXMP(template)
-
-newfile = x.name
-f = open(newfile, 'w')
-f.write(newData)
+print("Process is done\n")
