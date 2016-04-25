@@ -1,4 +1,7 @@
+# run python script: python interpolate.py [firstFile] [lastFile] [targetDirectory]
+
 import math
+import sys
 
 def intToDigit(integer, digit_number = 4): #this function takes an integer and returns
     return str(integer).zfill(digit_number)
@@ -7,8 +10,8 @@ def intToDigit(integer, digit_number = 4): #this function takes an integer and r
 #MyXMP is for individual xmp files
 class MyXMP:
 
-    def __init__(self, number = 0, exposure = 0, temp = 6000, tint = 0):
-        self.name = "DSC_" + intToDigit(number) + ".xmp"
+    def __init__(self, number = 0, exposure = 0, temp = 6000, tint = 0, prefix = "DSC_"):
+        self.name = prefix + intToDigit(number) + ".xmp"
         self.exposure = exposure
         self.temp = temp
         self.tint = tint
@@ -17,7 +20,7 @@ class MyXMP:
         return self.getData()
 
     def getNumber(self):
-        number = int(self.name[4:-4])
+        number = int(self.name[-8:-4])
         return number
 
     def getName(self):
@@ -27,9 +30,6 @@ class MyXMP:
         data = ""
         data += self.name + ":\t" + str(self.exposure) + "\t" + str(self.temp) + "\t" + str(self.tint)
         return data
-
-
-
 
     def setAttribute(self, attributeName, newData): #attributeName would be "crs:Exposure2012=\"" for exposure
         startData = newData.find(attributeName) + len(attributeName)
@@ -137,7 +137,7 @@ class MyXMPList:
 class InterpolationController:
 
     def __init__(self, file1Path, file2Path, writePath):
-        self.XMPList = MyXMPList(file1Path) # I have no idea if this will work
+        self.XMPList = MyXMPList(file1Path)
         self.XMPList.setData(file1Path, file2Path)
         self.writePath = writePath
 
@@ -148,9 +148,9 @@ class InterpolationController:
 
 print("\nProgram is starting...\n")
 
-firstFile = "./source/DSC_0037.xmp"
-lastFile  = "./source/DSC_0209.xmp"
-writePath = "./output/"
+firstFile = sys.argv[1]
+lastFile  = sys.argv[2]
+writePath = sys.argv[3]
 
 
 controller = InterpolationController(firstFile, lastFile, writePath)
