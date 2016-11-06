@@ -1,7 +1,0 @@
-For exposure: crs:Exposure2012="[0]"
-
-For white balance: crs:WhiteBalance="[Custom]"
-    temperature: crs:Temperature="[6000]"
-    tint: crs:Tint="[+8]"
-    
-For raw file name: crs:RawFileName="DSC_0011.NEF"
